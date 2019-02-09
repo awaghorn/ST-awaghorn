@@ -26,6 +26,10 @@ metadata {
         capability "Power Meter"
         capability "Refresh"
         
+        attribute "lastphysoff", "string" //time (epoch) last physically switched off
+        attribute "lastphyslag", "number" //lag to apply before allowing non-physical reactivation
+        attribute "lastphysoption", "boolean" //whether to apply last physical timing logic
+        
         command "reset"
 	}
 
@@ -67,4 +71,22 @@ void refresh() {
 
 void reset() {
 	parent.childReset(device.deviceNetworkId)
+}
+
+//Added by Andrew Waghorn
+
+void configPhysOff(configlastphyslag, configlastphysoption) {
+	//Set by update/install tasks in parent
+    parent.logging("setting configPhysOff with inputs ${configlastphyslag} and ${configlastphysoption}")
+    state.lastphyslag = configlastphyslag.toInteger() * 1000 // multiple by 1000 to convert to milliseconds
+    state.lastphysoption = configlastphysoption
+}
+
+void setlastphysoff(i_lastphysoff) {
+	state.lastphysoff = i_lastphysoff
+}
+
+//Workaround per ST documentation at: https://docs.smartthings.com/en/latest/smartapp-developers-guide/state.html
+def getStateValue(key) {
+    return state[key]
 }

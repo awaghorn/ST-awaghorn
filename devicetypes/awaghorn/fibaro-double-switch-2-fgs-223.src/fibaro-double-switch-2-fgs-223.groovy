@@ -317,7 +317,13 @@ def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotificat
     logging("sequenceNumber: $cmd.sequenceNumber")
     logging("keyAttributes: $cmd.keyAttributes")
     
-    buttonEvent(cmd.keyAttributes + 1, (cmd.sceneNumber == 1? "pushed" : "held"))
+   	def childDevice = childDevices.find{it.deviceNetworkId == "$device.deviceNetworkId-ep$cmd.sceneNumber"}
+    logging("applying rules for child $childDevice.deviceNetworkId")
+    if (childDevice && childDevice.currentSwitch == 'off') {
+    	childDevice.setlastphysoff(now())
+    } 
+    
+    buttonEvent(cmd.sceneNumber, (cmd.keyAttributes + 1 == 1? "pushed" : "held")) //swopped = scene is always 1 for S1, 2 for S2
 
 }
 
@@ -370,12 +376,20 @@ void childOn(String dni) {
     logging("childOn($dni)")
     def cmds = []
     cmds << new physicalgraph.device.HubAction(secure(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni))))
+    
+    def childDevice = childDevices.find{it.deviceNetworkId == dni}
+    logging("Option value = ${childDevice.getStateValue('lastphysoption')} ; Last off = ${childDevice.getStateValue('lastphysoff')} ; Lag = ${childDevice.getStateValue('lastphyslag')}")
+    if (childDevice && childDevice.getStateValue("lastphysoption") && now() < childDevice.getStateValue("lastphysoff") + childDevice.getStateValue("lastphyslag") ) {
+      	logging("Skipping on command due to lastphysoff within lag window on ${childDevice.deviceNetworkId}")
+        cmds = []
+    }
+
 	sendHubCommand(cmds, 1000)
 }
 
 void childOff(String dni) {
     logging("childOff($dni)")
-	def cmds = []
+    def cmds = []
     cmds << new physicalgraph.device.HubAction(secure(encap(zwave.basicV1.basicSet(value: 0x00), channelNumber(dni))))
 	sendHubCommand(cmds, 1000)
 }
@@ -432,7 +446,7 @@ def generate_preferences(configuration_model)
     {
         switch(it.@type)
         {   
-            case ["byte","short","four"]:
+            case ["byte","short","four","number"]:
                 input "${it.@index}", "number",
                     title:"${it.@label}\n" + "${it.Help}",
                     range: "${it.@min}..${it.@max}",
@@ -539,6 +553,13 @@ def update_needed_settings()
             } 
         }
     }
+    
+    //Update state on child devices based on settings for physical switch off lag
+    
+     childDevices.each { childDevice ->
+        logging("updating child device physical switch settings ${childDevice.deviceNetworkId} ; channel number ${channelNumber(childDevice.deviceNetworkId)}")
+		childDevice.configPhysOff(settings."physlag_S${channelNumber(childDevice.deviceNetworkId)}", settings."physlagON_S${channelNumber(childDevice.deviceNetworkId)}")
+     }
     
     sendEvent(name:"needUpdate", value: isUpdateNeeded, displayed:false, isStateChange: true)
     return cmds
@@ -941,6 +962,26 @@ Momentary Mode
     <Value type="boolean" index="enableDebugging" label="Enable Debug Logging?" value="true" setting_type="preference" fw="">
     <Help>
     </Help>
+  </Value>
+  <Value type="boolean" index="physlagON_S1" label="Enable turn-on delay for S1?" value="false" setting_type="preference" fw="">
+    <Help>
+Activate function to ignore any digital commands received within X seconds of physically switching the light off - first load
+    </Help>
+  </Value>
+  <Value type="boolean" index="physlagON_S2" label="Enable turn-on delay for S2?" value="false" setting_type="preference" fw="">
+    <Help>
+Activate function to ignore any digital commands received within X seconds of physically switching the light off - second load
+	</Help>
+  </Value>
+  <Value type="number" index="physlag_S1" label="Lag (in seconds) to apply for S1" value="30" setting_type="preference" fw="">
+    <Help>
+Number of seconds on commands will be ignored after physical off switch on S1
+    </Help>
+  </Value>
+  <Value type="number" index="physlag_S2" label="Enable turn-on delay for S2?" value="30" setting_type="preference" fw="">
+    <Help>
+Number of seconds on commands will be ignored after physical off switch on S2
+	</Help>
   </Value>
 </configuration>
 '''
