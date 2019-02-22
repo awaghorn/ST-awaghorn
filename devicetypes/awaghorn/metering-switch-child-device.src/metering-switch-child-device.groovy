@@ -83,7 +83,8 @@ void configPhysOff(configlastphyslag, configlastphysoption) {
 }
 
 void setlastphysoff(i_lastphysoff) {
-	state.lastphysoff = i_lastphysoff
+    parent.logging("setting lastPhysOff with inputs ${i_lastphysoff}")
+    state.lastphysoff = i_lastphysoff
 }
 
 //Workaround per ST documentation at: https://docs.smartthings.com/en/latest/smartapp-developers-guide/state.html

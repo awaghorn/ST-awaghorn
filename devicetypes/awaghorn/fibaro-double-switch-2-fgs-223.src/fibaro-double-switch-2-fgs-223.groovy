@@ -318,9 +318,10 @@ def zwaveEvent(physicalgraph.zwave.commands.centralscenev1.CentralSceneNotificat
     logging("keyAttributes: $cmd.keyAttributes")
     
    	def childDevice = childDevices.find{it.deviceNetworkId == "$device.deviceNetworkId-ep$cmd.sceneNumber"}
-    logging("applying rules for child $childDevice.deviceNetworkId")
+    logging("applying rules for child $childDevice.deviceNetworkId switch status is ${childDevice.currentSwitch}")
     if (childDevice && childDevice.currentSwitch == 'off') {
-    	childDevice.setlastphysoff(now())
+    	logging("calling subroutine $childDevice.deviceNetworkId switch status is ${childDevice.currentSwitch}")
+        childDevice.setlastphysoff(now())
     } 
     
     buttonEvent(cmd.sceneNumber, (cmd.keyAttributes + 1 == 1? "pushed" : "held")) //swopped = scene is always 1 for S1, 2 for S2
@@ -379,7 +380,7 @@ void childOn(String dni) {
     
     def childDevice = childDevices.find{it.deviceNetworkId == dni}
     logging("Option value = ${childDevice.getStateValue('lastphysoption')} ; Last off = ${childDevice.getStateValue('lastphysoff')} ; Lag = ${childDevice.getStateValue('lastphyslag')}")
-    if (childDevice && childDevice.getStateValue("lastphysoption") && now() < childDevice.getStateValue("lastphysoff") + childDevice.getStateValue("lastphyslag") ) {
+    if (childDevice && childDevice.getStateValue("lastphysoption") && childDevice.getStateValue("lastphysoff") && now() < childDevice.getStateValue("lastphysoff") + childDevice.getStateValue("lastphyslag") ) {
       	logging("Skipping on command due to lastphysoff within lag window on ${childDevice.deviceNetworkId}")
         cmds = []
     }
