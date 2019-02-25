@@ -18,8 +18,8 @@ definition(
 		author: "Andrew Waghorn",
 		description: "Receive notification when button pressed.",
 		category: "Convenience",
-		iconUrl: "https://s3.amazonaws.com/smartapp-icons/Categories/damageAndDanger.png",
-		iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Categories/damageAndDanger@2x.png",
+		iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-SmartMessages.png",
+		iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-SmartMessages@2x.png",
 		pausable: true
 )
 
