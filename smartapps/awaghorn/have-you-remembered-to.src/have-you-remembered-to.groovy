@@ -1,5 +1,7 @@
 /**
- *  Created by Andrew Waghorn, based on Notify Me When from ST
+ *  Have You Remembered To
+ *
+ *  Copyright 2019 Andrew Waghorn
  *
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
@@ -10,39 +12,33 @@
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
- *
  */
 definition(
-		name: "Button Notification",
-		namespace: "awaghorn",
-		author: "Andrew Waghorn",
-		description: "Receive notification when button pressed.",
-		category: "Convenience",
-		iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-SmartMessages.png",
-		iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/App-SmartMessages@2x.png",
-		pausable: true
-)
+    name: "Have You Remembered To",
+    namespace: "awaghorn",
+    author: "Andrew Waghorn",
+    description: "App to notify you if a sensor has not been activated by a certain time",
+    category: "My Apps",
+    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
+    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
+    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png")
+
 
 preferences {
 	page(name: "prefsPage")
-/*    page (name: "pref2event", title: "Select Button Event", uninstall: false) {
-        section("Choose button event to trigger notification"){
-            input "buttonEvent", "enum", title: "Button Event", required: true, multiple: false
-        }
-    }*/
 }
 
 def prefsPage() {
 	dynamicPage (name: "prefsPage", title: "Main Configuration", install: true, uninstall: true) {
-        section("Choose button to trigger..."){
-            input "button", "capability.button", title: "Button Pushed", required: true, multiple: false, submitOnChange: true
-        }
-        
-        if (button) {
-			section("Button Event") {
-        		input("buttonEvent", "enum", title: "Select Button Event to trigger message", required: false, multiple: false, options: prefEvents(button))
-	        }
-        }
+          
+        section("Basic Settings"){
+            input "startTime", "time", title: "Start time to monitor from", required: true
+            input "cutOffTime", "time", title: "Cut-off time to be notified", required: true
+            input "cutOffDays", "enum", title: "Days of week to check", required: false, options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], multiple: true
+            input "triggerContact", "capability.contactSensor", title: "Open / Close Sensor that indicates event has happened", required: false, multiple: false
+            input "triggerMotion", "capability.motionSensor", title: "Motion Sensor that indicates event has happened", required: false, multiple: false
+        	paragraph "Make sure at least one contact OR motion sensor is selected"        
+        }      
         section("Send this message (optional, sends standard status message if not specified)"){
             input "messageText", "text", title: "Message Text", required: false
         }
@@ -70,33 +66,63 @@ def prefsPage() {
     }
 }
 
-def prefEvents(device) {
-
-    def returnArr = []
-    device.supportedAttributes.each { n-> 
-    returnArr << "$n"    
-    }
-    //log.debug("populated array $returnArr")
-    return returnArr
-}
-
 def installed() {
 	log.debug "Installed with settings: ${settings}"
-	subscribeToEvents()
+	//subscribeToEvents()
 }
 
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
-	subscribeToEvents()
+	//subscribeToEvents()
+    setupSchedule()
 }
 
 def subscribeToEvents() {
 	//log.debug("testing sub build: $button.$buttonEvent ")
-	subscribe(button, "$buttonEvent", eventHandler)
+	//subscribe(button, "$buttonEvent", eventHandler)
 }
 
-def eventHandler(evt) {
+def setupSchedule() {
+	
+    log.trace("$startTime")
+    
+	def sHH = timeToday(cutOffTime,location.timeZone).format("H")
+    def sMM = timeToday(cutOffTime,location.timeZone).format("m")
+    
+    String shortday
+	
+    def sDay = ""
+    if (cutOffDays) {
+    	cutOffDays.each {d->
+        	shortday = d.substring(0,3)
+        	sDay = sDay + ",$shortday"
+        }
+        sDay = sDay.substring(1,sDay.length())
+    } else {
+    	sDay = "*"
+    }
+    
+    log.debug("Hours are: $sHH and minutes are: $sMM and days are: $sDay so finish schedule is 23 $sMM $sHH ? * $sDay")
+    schedule("23 $sMM $sHH ? * $sDay", watchEnd)
+
+}
+
+def watchEnd() {
+	def triggerEvents = []
+    triggerEvents.addAll(triggerContact.eventsBetween(timeToday(startTime,location.timeZone),timeToday(cutOffTime,location.timeZone)))
+    triggerEvents.addAll(triggerContact.eventsBetween(timeToday(startTime,location.timeZone),timeToday(cutOffTime,location.timeZone)))
+    log.debug("$triggerEvents")
+    if (!triggerEvents) { //no  events therefore send message
+    	log.debug("send event here")
+        def evt = [name: "trigger", value: "no activity found, sending message", descriptionText: "Trigger Event"]
+        log.debug("$evt")
+        messageEvent(evt)
+    }
+
+}
+
+def messageEvent(evt) {
 	log.debug "Notify got evt ${evt}"
    	log.debug "$evt.name:$evt.value, pushAndPhone:$pushAndPhone, '$msg'"
 
