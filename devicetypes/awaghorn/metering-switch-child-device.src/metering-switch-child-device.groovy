@@ -31,6 +31,7 @@ metadata {
         attribute "lastphysoption", "boolean" //whether to apply last physical timing logic
         
         command "reset"
+        command "childOffTest"
 	}
 
 	tiles {

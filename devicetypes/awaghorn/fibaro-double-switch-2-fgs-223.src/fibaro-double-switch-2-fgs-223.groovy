@@ -35,6 +35,8 @@ definition (name: "Fibaro Double Switch 2 FGS-223", namespace: "awaghorn", autho
     capability "Holdable Button"
 
     command "reset"
+    command "childOnTest"
+    command "childOffTest"
 
     fingerprint mfr: "010F", prod: "0203", model: "2000", deviceJoinName: "Fibaro Double Switch 2"
     fingerprint mfr: "010F", prod: "0203", model: "1000", deviceJoinName: "Fibaro Double Switch 2"
@@ -373,7 +375,7 @@ def off() {
     ])
 }
 
-void childOn(String dni) {
+def childOn(String dni) {
     logging("childOn($dni)")
     def cmds = []
     cmds << new physicalgraph.device.HubAction(secure(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni))))
@@ -385,7 +387,49 @@ void childOn(String dni) {
         cmds = []
     }
 
-	sendHubCommand(cmds, 1000)
+	sendHubCommand(cmds, 100)
+    //return delayBetween(cmds,100)
+}
+
+
+def childOnTest() {
+    
+    def dni = "03-ep2"
+    logging("childOn($dni) from test command")
+    def cmds = []
+    cmds << secure(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni)))
+    //new physicalgraph.device.HubAction(secure(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni))))
+    
+    def childDevice = childDevices.find{it.deviceNetworkId == dni}
+    //logging("Option value = ${childDevice.getStateValue('lastphysoption')} ; Last off = ${childDevice.getStateValue('lastphysoff')} ; Lag = ${childDevice.getStateValue('lastphyslag')}")
+    if (childDevice && childDevice.getStateValue("lastphysoption") && childDevice.getStateValue("lastphysoff") && now() < childDevice.getStateValue("lastphysoff") + childDevice.getStateValue("lastphyslag") ) {
+      	logging("Skipping on command due to lastphysoff within lag window on ${childDevice.deviceNetworkId}")
+        cmds = []
+    }
+
+	//sendHubCommand(cmds, 100)
+    return delayBetween(cmds,100)
+    
+}
+
+def childOffTest() {
+    
+    def dni = "03-ep2"
+    logging("childOn($dni) from test command")
+    def cmds = []
+    cmds << secure(encap(zwave.basicV1.basicSet(value: 0x00), channelNumber(dni)))
+    //new physicalgraph.device.HubAction(secure(encap(zwave.basicV1.basicSet(value: 0xFF), channelNumber(dni))))
+    /*
+    def childDevice = childDevices.find{it.deviceNetworkId == dni}
+    //logging("Option value = ${childDevice.getStateValue('lastphysoption')} ; Last off = ${childDevice.getStateValue('lastphysoff')} ; Lag = ${childDevice.getStateValue('lastphyslag')}")
+    if (childDevice && childDevice.getStateValue("lastphysoption") && childDevice.getStateValue("lastphysoff") && now() < childDevice.getStateValue("lastphysoff") + childDevice.getStateValue("lastphyslag") ) {
+      	logging("Skipping on command due to lastphysoff within lag window on ${childDevice.deviceNetworkId}")
+        cmds = []
+    }
+	*/
+	//sendHubCommand(cmds, 100)
+    return delayBetween(cmds,100)
+    
 }
 
 void childOff(String dni) {
