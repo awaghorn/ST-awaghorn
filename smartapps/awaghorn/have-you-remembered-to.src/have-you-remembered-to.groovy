@@ -111,7 +111,7 @@ def setupSchedule() {
 def watchEnd() {
 	def triggerEvents = []
     triggerEvents.addAll(triggerContact.eventsBetween(timeToday(startTime,location.timeZone),timeToday(cutOffTime,location.timeZone)))
-    triggerEvents.addAll(triggerContact.eventsBetween(timeToday(startTime,location.timeZone),timeToday(cutOffTime,location.timeZone)))
+    triggerEvents.addAll(triggerMotion.eventsBetween(timeToday(startTime,location.timeZone),timeToday(cutOffTime,location.timeZone)))
     log.debug("$triggerEvents")
     if (!triggerEvents) { //no  events therefore send message
     	log.debug("send event here")
